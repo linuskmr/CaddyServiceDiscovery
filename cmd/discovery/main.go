@@ -2,32 +2,40 @@ package main
 
 import (
 	"fmt"
-	"github.com/jaku01/caddyservicediscovery/cmd/internal/caddy"
+	"github.com/jaku01/caddyservicediscovery/internal/caddy"
+	dockerconnector "github.com/jaku01/caddyservicediscovery/internal/docker"
 )
 
 func main() {
 
-	connector := caddy.NewConnector("http://localhost:2019")
+	dockerConnector := dockerconnector.NewDockerConnector()
+	caddyConnector := caddy.NewConnector("http://localhost:2019")
 
-	config, err := connector.GetCaddyConfig()
+	config, err := caddyConnector.GetCaddyConfig()
 	if err != nil {
 		panic(err)
 	}
 
 	if config == nil {
 		fmt.Println("No config found")
-		err = connector.CreateCaddyConfig()
+		err = caddyConnector.CreateCaddyConfig()
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	serverMap := map[string]caddy.Server{
-		"server1": caddy.NewReverseProxyServer(8082, "localhost:3000"),
-		"server2": caddy.NewReverseProxyServer(8081, "localhost:8080"),
+	containers, err := dockerConnector.GetAllContainersWithActiveLabel()
+	if err != nil {
+		panic(err)
 	}
 
-	err = connector.ReplaceServers(serverMap)
+	serverMap := make(map[string]caddy.Server)
+	for _, container := range containers {
+		reverseProxyServer := caddy.NewReverseProxyServer(container.Port, container.Upstream)
+		serverMap[container.ContainerName] = reverseProxyServer
+	}
+
+	err = caddyConnector.ReplaceServers(serverMap)
 	if err != nil {
 		panic(err)
 	}
