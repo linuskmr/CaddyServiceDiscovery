@@ -56,7 +56,7 @@ When running your Docker containers, add the following labels:
 - `caddy.service.discovery.port=<port>` (the port to expose)
 - `caddy.service.discovery.upstream=<host:port>` (the upstream address)
 
-Example:
+**Example:**
 
 ```sh
 docker run -d \
@@ -75,10 +75,21 @@ docker run -d \
 - `internal/docker/`: Handles Docker API communication and container discovery.
 - `internal/scheduler/`: Orchestrates the discovery and update loop.
 
-## Configuration
+### Configuration File (`configuration.yaml`)
 
-- The Caddy Admin API URL can be changed by modifying the argument in `main.go`.
-- It is planned to add support for environment variables and configuration files in future releases.
+You can configure the service discovery tool using a `configuration.yaml` file in the project root. The following options are available:
+
+- `CaddyAdminUrl`: The URL of the Caddy Admin API. Default is `http://localhost:2019`.
+- `ScheduleInterval`: The interval (in seconds) at which the tool checks for changes in Docker containers. Default is `5`.
+
+**Example:**
+
+```yaml
+CaddyAdminUrl: "http://localhost:2019"
+ScheduleInterval: 5 # provide desired interval in seconds, default value is 5 seconds
+```
+
+This allows you to easily adjust the connection to your Caddy instance and how frequently the service discovery runs, without changing the code.
 
 ## Development
 

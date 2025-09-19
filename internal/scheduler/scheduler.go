@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-func StartScheduleDiscovery(caddyAdminUrl string) error {
+func StartScheduleDiscovery(caddyAdminUrl string, scheduleInterval int) error {
 	dockerConnector := dockerconnector.NewDockerConnector()
 	caddyConnector := caddy.NewConnector(caddyAdminUrl)
 
 	log.Println("Starting scheduler for service discovery")
-	log.Printf("Caddy admin url: %s", caddyAdminUrl)
+	log.Printf("Using caddy admin url: %s", caddyAdminUrl)
 
 	err := createCaddyConfigIfMissing(caddyConnector)
 	if err != nil {
@@ -44,7 +44,7 @@ func StartScheduleDiscovery(caddyAdminUrl string) error {
 			}
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(scheduleInterval) * time.Second)
 	}
 }
 
