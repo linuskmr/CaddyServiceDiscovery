@@ -75,7 +75,7 @@ docker run -d \
 - `internal/docker/`: Handles Docker API communication and container discovery.
 - `internal/scheduler/`: Orchestrates the discovery and update loop.
 
-### Configuration File (`configuration.yaml`)
+## Configuration File (`configuration.yaml`)
 
 You can configure the service discovery tool using a `configuration.yaml` file in the project root. The following options are available:
 
