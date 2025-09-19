@@ -68,13 +68,6 @@ docker run -d \
   my-image:latest
 ```
 
-## Project Structure
-
-- `cmd/discovery/main.go`: Entry point for the service discovery tool.
-- `internal/caddy/`: Handles Caddy API communication and configuration.
-- `internal/docker/`: Handles Docker API communication and container discovery.
-- `internal/scheduler/`: Orchestrates the discovery and update loop.
-
 ## Configuration File (`configuration.yaml`)
 
 You can configure the service discovery tool using a `configuration.yaml` file in the project root. The following options are available:
@@ -91,11 +84,19 @@ ScheduleInterval: 5 # provide desired interval in seconds, default value is 5 se
 
 This allows you to easily adjust the connection to your Caddy instance and how frequently the service discovery runs, without changing the code.
 
+## Project Structure
+
+- `cmd/discovery/main.go`: Entry point for the service discovery tool.
+- `internal/caddy/`: Handles Caddy API communication and configuration.
+- `internal/docker/`: Handles Docker API communication and container discovery.
+- `internal/scheduler/`: Orchestrates the discovery and update loop.
+
 ## Development
 
 - Clone the repository.
 - Run `go mod tidy` to install dependencies.
 - Build and run as described above.
+
 
 ## License
 
