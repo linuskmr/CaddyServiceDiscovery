@@ -3,6 +3,7 @@ package caddy
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -32,7 +33,7 @@ func (c *Connector) GetCaddyConfig() (*Config, error) {
 
 	// if content is "null", return nil
 	if len(responseContent) == 0 || string(responseContent) == "null\n" {
-		return nil, nil
+		return nil, fmt.Errorf("no caddy config found")
 	}
 
 	caddyConfig, err := UnmarshalCaddyConfig(responseContent)
