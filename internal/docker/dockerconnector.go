@@ -7,6 +7,7 @@ import (
 
 	containertypes "github.com/docker/docker/api/types/container"
 	eventtypes "github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
 
@@ -30,9 +31,20 @@ type ContainerInfo struct {
 type EventType int
 
 const (
-	ContainerCreatedEvent = iota
-	ContainerDestroyedEvent
+	ContainerStartEvent = iota
+	ContainerDieEvent
 )
+
+func (e EventType) String() string {
+	switch e {
+	case ContainerStartEvent:
+		return "ContainerStartEvent"
+	case ContainerDieEvent:
+		return "ContainerDieEvent"
+	default:
+		return "unknown"
+	}
+}
 
 type DockerEvent struct {
 	ContainerInfo ContainerInfo
@@ -58,7 +70,13 @@ func (dc *DockerConnector) GetEventChannel() <-chan DockerEvent {
 	go func() {
 		defer close(transformedEvents)
 		ctxWithCancel, cancelCtx := context.WithCancel(dc.ctx)
-		rawEvents, err := dc.dockerClient.Events(ctxWithCancel, eventtypes.ListOptions{})
+		// For available filters, see https://docs.docker.com/reference/api/engine/version/v1.51/#tag/System/operation/SystemEvents
+		eventFilters := filters.NewArgs()
+		eventFilters.Add("type", string(eventtypes.ContainerEventType))
+		eventFilters.Add("event", string(eventtypes.ActionStart))
+		eventFilters.Add("event", string(eventtypes.ActionDie))
+		eventFilters.Add("label", activeLabel)
+		rawEvents, err := dc.dockerClient.Events(ctxWithCancel, eventtypes.ListOptions{Filters: eventFilters})
 		defer cancelCtx()
 
 		for {
@@ -84,10 +102,17 @@ func (dc *DockerConnector) GetEventChannel() <-chan DockerEvent {
 }
 
 func transformDockerEvent(rawEvent eventtypes.Message) *DockerEvent {
-	if rawEvent.Type != eventtypes.ContainerEventType {
+	if rawEvent.Type != eventtypes.ContainerEventType || rawEvent.Actor.Attributes[activeLabel] != "true" {
 		return nil
 	}
-	if rawEvent.Actor.Attributes[activeLabel] != "true" {
+
+	var eventType EventType
+	switch rawEvent.Action {
+	case eventtypes.ActionStart:
+		eventType = ContainerStartEvent
+	case eventtypes.ActionDie:
+		eventType = ContainerDieEvent
+	default:
 		return nil
 	}
 
@@ -102,16 +127,6 @@ func transformDockerEvent(rawEvent eventtypes.Message) *DockerEvent {
 		Port:          port,
 		Upstream:      rawEvent.Actor.Attributes[upstreamLabel],
 		ContainerName: rawEvent.Actor.Attributes["name"],
-	}
-
-	var eventType EventType
-	switch rawEvent.Action {
-	case eventtypes.ActionCreate:
-		eventType = ContainerCreatedEvent
-	case eventtypes.ActionDestroy:
-		eventType = ContainerDestroyedEvent
-	default:
-		return nil
 	}
 
 	return &DockerEvent{
@@ -129,7 +144,6 @@ func (dc *DockerConnector) GetAllContainersWithActiveLabel() ([]ContainerInfo, e
 	var activeContainers []ContainerInfo
 	for _, container := range containers {
 		if container.Labels[activeLabel] == "true" {
-
 			port, err := strconv.Atoi(container.Labels[portLabel])
 			if err != nil {
 				log.Println("Error converting port to int")

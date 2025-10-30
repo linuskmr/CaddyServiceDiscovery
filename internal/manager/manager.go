@@ -32,11 +32,11 @@ func StartServiceDiscovery(caddyAdminUrl string) error {
 	}
 
 	for dockerEvent := range dockerConnector.GetEventChannel() {
+		log.Printf("Received docker event %+v, updating caddy configuration\n", dockerEvent)
 		err = updateServerMap(dockerEvent, serverMap)
 		if err != nil {
 			return err
 		}
-		log.Println("Server map changes detected, updating caddy configuration")
 
 		err = caddyConnector.SetServers(serverMap)
 		if err != nil {
@@ -63,10 +63,10 @@ func getServerMap(dockerConnector *dockerconnector.DockerConnector) (map[string]
 
 func updateServerMap(dockerEvent dockerconnector.DockerEvent, serverMap map[string]caddy.Server) error {
 	switch dockerEvent.EventType {
-	case dockerconnector.ContainerCreatedEvent:
+	case dockerconnector.ContainerStartEvent:
 		reverseProxyServer := caddy.NewReverseProxyServer(dockerEvent.ContainerInfo.Port, dockerEvent.ContainerInfo.Upstream)
 		serverMap[dockerEvent.ContainerInfo.ContainerName] = reverseProxyServer
-	case dockerconnector.ContainerDestroyedEvent:
+	case dockerconnector.ContainerDieEvent:
 		delete(serverMap, dockerEvent.ContainerInfo.ContainerName)
 	default:
 		return fmt.Errorf("unknown docker event type %d", dockerEvent.EventType)
