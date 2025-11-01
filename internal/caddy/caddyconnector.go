@@ -45,6 +45,11 @@ func (c *Connector) GetCaddyConfig() (*Config, error) {
 
 func (c *Connector) CreateCaddyConfig() error {
 	config := Config{}
+	config.Apps.HTTP.Servers = make(map[string]Server, 1)
+	config.Apps.HTTP.Servers["srv0"] = Server{
+		Listen: []string{":443", ":80"},
+		Routes: []Route{},
+	}
 	body, err := json.Marshal(config)
 	if err != nil {
 		return err
@@ -58,35 +63,55 @@ func (c *Connector) CreateCaddyConfig() error {
 	return nil
 }
 
-func (c *Connector) SetServers(servers map[string]Server) error {
-	body, err := json.Marshal(servers)
+func (c *Connector) SetRoutes(routes []Route) error {
+	reqBody, err := json.Marshal(routes)
 	if err != nil {
 		return err
 	}
+	fmt.Println("sending", string(reqBody)) // TODO: remove
 
-	resp, err := http.Post(c.Url+"/config/apps/http/servers", "application/json", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPatch, c.Url+"/config/apps/http/servers/srv0/routes/", bytes.NewReader(reqBody))
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	fmt.Println(resp.Status, string(respBody))
+
 	return nil
 }
 
-func NewReverseProxyServer(port int, upstream string) Server {
-	server := Server{
-		Listen: []string{":" + strconv.Itoa(port)},
-		Routes: []Route{
-			{
-				Handle: []Handler{
-					{
-						Handler: "reverse_proxy",
-						Upstreams: []Upstream{
-							{Dial: upstream},
+// NewReverseProxyRoute creates a reverse proxy forwarding accesses to incomingDomain to upstreamPort
+func NewReverseProxyRoute(incomingDomain string, upstreamPort int) Route {
+	return Route{
+		Handle: []Handle{
+			Handle{
+				Handler: "subroute",
+				Routes: []Route{
+					Route{
+						Match: nil,
+						Handle: []Handle{
+							Handle{
+								Handler: "reverse_proxy",
+								Upstreams: []Upstream{
+									Upstream{
+										Dial: ":" + strconv.Itoa(upstreamPort),
+									},
+								},
+							},
 						},
 					},
 				},
 			},
 		},
+		Match: []Match{
+			Match{
+				Host: []string{incomingDomain},
+			},
+		},
 	}
-	return server
 }

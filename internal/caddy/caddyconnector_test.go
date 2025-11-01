@@ -7,7 +7,7 @@ import (
 )
 
 func TestConnector_GetCaddyConfig(t *testing.T) {
-	mockResponse := "{\"apps\":{\"http\":{\"servers\":{\"exampleServer\":{\"listen\":[\":443\"],\"routes\":[{\"handle\":[{\"handler\":\"static_response\",\"body\":\"Test\"}]}]}}}}}\n"
+	mockResponse := "{\"apps\":{\"http\":{\"servers\":{\"exampleServer\":{\"listen\":[\":443\"],\"routes\":[{\"handle\":[{\"handler\":\"reverse_proxy\",\"upstreams\":[{\"dial\":\":8080\"}]}]}]}}}}}\n"
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/config/" && r.Method == http.MethodGet {
@@ -40,11 +40,14 @@ func TestConnector_GetCaddyConfig(t *testing.T) {
 	if len(server.Routes[0].Handle) != 1 {
 		t.Errorf("Expected 1 handle, got %d", len(server.Routes[0].Handle))
 	}
-	if server.Routes[0].Handle[0].Handler != "static_response" {
-		t.Errorf("Expected handler static_response, got %s", server.Routes[0].Handle[0].Handler)
+	if server.Routes[0].Handle[0].Handler != "reverse_proxy" {
+		t.Errorf("Expected handler reverse_proxy, got %s", server.Routes[0].Handle[0].Handler)
 	}
-	if server.Routes[0].Handle[0].Body != "Test" {
-		t.Errorf("Expected body Test, got %s", server.Routes[0].Handle[0].Body)
+	if len(server.Routes[0].Handle[0].Upstreams) != 1 {
+		t.Errorf("Expected 1 upstream, got %d", len(server.Routes[0].Handle[0].Upstreams))
+	}
+	if server.Routes[0].Handle[0].Upstreams[0].Dial != ":8080" {
+		t.Errorf("Expected body Test, got %s", server.Routes[0].Handle[0].Upstreams[0].Dial)
 	}
 }
 
@@ -137,11 +140,10 @@ func TestConnector_ReplaceServers(t *testing.T) {
 
 	connector := NewConnector(mockServer.URL)
 
-	server := NewReverseProxyServer(8080, "127.0.0.1:9000")
-	serverMap := make(map[string]Server)
-	serverMap["exampleServer"] = server
+	route := NewReverseProxyRoute("subdomain.example.com", 8080)
+	routes := []Route{route}
 
-	err := connector.SetServers(serverMap)
+	err := connector.SetRoutes(routes)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -150,11 +152,11 @@ func TestConnector_ReplaceServers(t *testing.T) {
 func TestConnector_ReplaceServersFailsBecauseOfInvalidUrl(t *testing.T) {
 	connector := NewConnector("invalid-url")
 
-	server := NewReverseProxyServer(8080, "127.0.0.1:9000")
+	server := NewReverseProxyRoute("subdomain.example.com", "127.0.0.1:9000")
 	serverMap := make(map[string]Server)
 	serverMap["exampleServer"] = server
 
-	err := connector.SetServers(serverMap)
+	err := connector.SetRoutes(serverMap)
 	if err == nil {
 		t.Errorf("Expected error, got none")
 	}
@@ -163,7 +165,7 @@ func TestConnector_ReplaceServersFailsBecauseOfInvalidUrl(t *testing.T) {
 func TestNewReverseProxyServer(t *testing.T) {
 	port := 8080
 	upstream := "127.0.0.1:9000"
-	server := NewReverseProxyServer(port, upstream)
+	server := NewReverseProxyRoute(port, upstream)
 
 	if len(server.Listen) != 1 || server.Listen[0] != ":8080" {
 		t.Errorf("Expected listen port ':8080', got: %v", server.Listen)
