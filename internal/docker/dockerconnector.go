@@ -24,7 +24,7 @@ type DockerConnector struct {
 
 type ContainerInfo struct {
 	Port          int
-	Upstream      string
+	Domain        string
 	ContainerName string
 }
 
@@ -125,7 +125,7 @@ func transformDockerEvent(rawEvent eventtypes.Message) *DockerEvent {
 
 	containerInfo := ContainerInfo{
 		Port:          port,
-		Upstream:      rawEvent.Actor.Attributes[upstreamLabel],
+		Domain:        rawEvent.Actor.Attributes[upstreamLabel],
 		ContainerName: rawEvent.Actor.Attributes["name"],
 	}
 
@@ -152,7 +152,7 @@ func (dc *DockerConnector) GetAllContainersWithActiveLabel() ([]ContainerInfo, e
 
 			containerInfo := ContainerInfo{
 				Port:          port,
-				Upstream:      container.Labels[upstreamLabel],
+				Domain:        container.Labels[upstreamLabel],
 				ContainerName: container.Names[0],
 			}
 
