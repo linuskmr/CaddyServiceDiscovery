@@ -68,7 +68,6 @@ func (c *Connector) SetRoutes(routes []Route) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("sending", string(reqBody)) // TODO: remove
 
 	req, err := http.NewRequest(http.MethodPatch, c.Url+"/config/apps/http/servers/srv0/routes/", bytes.NewReader(reqBody))
 	if err != nil {
@@ -77,6 +76,9 @@ func (c *Connector) SetRoutes(routes []Route) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
@@ -89,16 +91,16 @@ func (c *Connector) SetRoutes(routes []Route) error {
 func NewReverseProxyRoute(incomingDomain string, upstreamPort int) Route {
 	return Route{
 		Handle: []Handle{
-			Handle{
+			{
 				Handler: "subroute",
 				Routes: []Route{
-					Route{
+					{
 						Match: nil,
 						Handle: []Handle{
-							Handle{
+							{
 								Handler: "reverse_proxy",
 								Upstreams: []Upstream{
-									Upstream{
+									{
 										Dial: ":" + strconv.Itoa(upstreamPort),
 									},
 								},
@@ -109,7 +111,7 @@ func NewReverseProxyRoute(incomingDomain string, upstreamPort int) Route {
 			},
 		},
 		Match: []Match{
-			Match{
+			{
 				Host: []string{incomingDomain},
 			},
 		},
