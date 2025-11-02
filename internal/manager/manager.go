@@ -21,12 +21,6 @@ func StartServiceDiscovery(caddyAdminUrl string) error {
 		return err
 	}
 
-	// TODO: remove
-	err = caddyConnector.CreateCaddyConfig()
-	if err != nil {
-		panic(err)
-	}
-
 	routes, err := getRoutes(dockerConnector)
 	if err != nil {
 		return err
@@ -74,15 +68,19 @@ func updateRoutes(dockerEvent dockerconnector.DockerEvent, routes *[]caddy.Route
 		reverseProxyRoute := caddy.NewReverseProxyRoute(dockerEvent.ContainerInfo.Domain, dockerEvent.ContainerInfo.Port)
 		*routes = append(*routes, reverseProxyRoute)
 	case dockerconnector.ContainerDieEvent:
-		filteredRoutes := make([]caddy.Route, 0, len(*routes)-1)
-		for _, route := range *routes {
+		oldLen := len(*routes)
+		for i, route := range *routes {
 			portMatches := route.Handle[0].Routes[0].Handle[0].Upstreams[0].Dial == ":"+strconv.Itoa(dockerEvent.ContainerInfo.Port)
 			domainMatches := route.Match[0].Host[0] == dockerEvent.ContainerInfo.Domain
-			if !portMatches || !domainMatches {
-				filteredRoutes = append(filteredRoutes, route)
+			if portMatches && domainMatches {
+				// Delete entry, see https://go.dev/wiki/SliceTricks#delete
+				*routes = append((*routes)[:i], (*routes)[i+1:]...)
 			}
 		}
-		routes = &filteredRoutes
+		newLen := len(*routes)
+		if newLen-1 != oldLen {
+			return fmt.Errorf("route to be removed for docker event %#v not found\n", dockerEvent)
+		}
 	default:
 		return fmt.Errorf("unknown docker event type %d", dockerEvent.EventType)
 	}
