@@ -76,7 +76,7 @@ func updateServerMap(dockerEvent dockerconnector.DockerEvent, serverMap map[stri
 
 func createCaddyConfigIfMissing(caddyConnector *caddy.Connector) error {
 	config, err := caddyConnector.GetCaddyConfig()
-	if err != nil {
+	if err != nil && err.Error() != "no caddy config found" {
 		panic(err)
 	}
 	if config != nil {
