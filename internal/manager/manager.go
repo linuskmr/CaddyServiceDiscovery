@@ -88,10 +88,9 @@ func updateRoutes(dockerEvent dockerconnector.DockerEvent, routes *[]caddy.Route
 }
 
 func createCaddyConfigIfMissing(caddyConnector *caddy.Connector) error {
-	// TODO: the function returns error but panics on all errors
 	config, err := caddyConnector.GetCaddyConfig()
 	if err != nil && err.Error() != "no caddy config found" {
-		panic(err)
+		return err
 	}
 	if config != nil {
 		return nil
@@ -100,7 +99,7 @@ func createCaddyConfigIfMissing(caddyConnector *caddy.Connector) error {
 	fmt.Println("No caddy config found, creating one")
 	err = caddyConnector.CreateCaddyConfig()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	return err
 }
