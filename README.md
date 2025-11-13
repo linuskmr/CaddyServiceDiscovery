@@ -13,7 +13,7 @@ This project provides automated service discovery for [Caddy](https://caddyserve
 
 1. The scheduler periodically queries Docker for containers with the label `caddy.service.discovery.active=true`.
 2. For each matching container, it reads the labels:
-    - `caddy.service.discovery.subdomain`: The subdomain to expose via Caddy.
+    - `caddy.service.discovery.domain`: The domain to expose via Caddy.
     - `caddy.service.discovery.port`: The port the docker container listens on.
 3. It generates a Caddy server configuration for each container.
 4. If the set of active containers changes, it updates the Caddy configuration via the Caddy Admin API.
